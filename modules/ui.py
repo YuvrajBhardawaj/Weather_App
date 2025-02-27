@@ -53,10 +53,12 @@ class WeatherApp:
         self.feelsLike_label = tk.Label(root, font=('arial', 20), bg='lightblue')
         self.loc_label = tk.Label(root, font=("arial", 10, 'bold'), fg='#1a0a6b', bg='lightblue')
 
-        self.temp_label.pack(pady=(150, 10))
+        self.temp_label.pack(pady=(80, 10))
         self.feelsLike_label.pack()
         self.loc_label.pack()
 
+        #forecast
+        self.create_forecast_labels()
         # Info labels
         self.create_info_labels()
 
@@ -81,10 +83,10 @@ class WeatherApp:
         self.frame_label.pack(padx=20, pady=10, side=tk.BOTTOM, fill='x')
 
         self.labels = {
-            "Wind": (120, 400),
-            "Humidity": (250, 400),
-            "Description": (430, 400),
-            "Pressure": (650, 400)
+            "Wind": (120, 420),
+            "Humidity": (250, 420),
+            "Description": (430, 420),
+            "Pressure": (650, 420)
         }
         self.data_labels = {}
 
@@ -92,6 +94,38 @@ class WeatherApp:
             tk.Label(self.root, text=key, font=("Helvetica", 15, 'bold'), fg='white', bg="#1ab5ef").place(x=x, y=y)
             self.data_labels[key] = tk.Label(self.root, text="...", font=('arial', 15, 'bold'), bg="#1ab5ef", fg='white')
             self.data_labels[key].place(x=x, y=y+30)
+
+    def create_forecast_labels(self):
+        forecast_frame = tk.Frame(self.root, bg="lightblue", padx=15, pady=10)
+        forecast_frame.pack()
+
+        # Row 0
+        self.days = []
+        for i in range(5):
+            lbl = tk.Label(forecast_frame,font=("Helvetica", 15, 'bold'),bg="lightblue", fg="grey", padx=10, pady=5)
+            lbl.grid(row=0, column=i, padx=5)
+            self.days.append(lbl)
+            
+        # Row 1
+        self.icons = []
+        for i in range(5):
+            lbl = tk.Label(forecast_frame, bg="lightblue", fg="white", padx=10, pady=5)
+            lbl.grid(row=1, column=i, padx=5)
+            self.icons.append(lbl)
+
+        # Row 2
+        self.temperatures = []
+        for i in range(5):
+            lbl = tk.Label(forecast_frame,font=("Helvetica", 12, 'bold'), bg="lightblue", fg="grey", padx=10, pady=5)
+            lbl.grid(row=2, column=i, padx=5)
+            self.temperatures.append(lbl)
+
+        # Row3
+        self.condition = []
+        for i in range(5):
+            lbl = tk.Label(forecast_frame,font=("Helvetica", 12, 'bold'), bg="lightblue", fg="grey", padx=10, pady=5)
+            lbl.grid(row=3, column=i, padx=5, pady=1)
+            self.condition.append(lbl)
 
     def fetch_weather(self):
         """Fetch weather data in a background thread to prevent UI freezing."""
@@ -109,14 +143,14 @@ class WeatherApp:
                 location = get_location(city)
                 weather = get_weather(city) if location else None
                 weekly_forcast = get_weekly_forecast(city)
-                print(weekly_forcast)
+                #print(weekly_forcast)
                 print(f"Location Fetch Time: {time.time() - start_time:.2f}s")  # Log time
 
                 if not location or not weather:
                     raise ValueError("Invalid response from API")
                 self.weather_label.config(text="Last Updated At")
                 self.clock_label.config(text=location['time'])
-                self.root.after(0, lambda: self.update_ui(location, weather))
+                self.root.after(0, lambda: self.update_ui(location, weather, weekly_forcast))
             except Exception as e:
                 print("API Error:", e)  # Debugging
                 self.root.after(0, self.display_error)
@@ -132,30 +166,57 @@ class WeatherApp:
         self.weather_label.config(text="Error fetching data")
 
 
-    def update_ui(self, location, weather):
+    def update_ui(self, location, weather, forecast):
         if weather:
             self.temp_label.config(text=f"{weather['temperature']}⁰C")
             self.feelsLike_label.config(text=f"Feels Like {weather['feelslike']}⁰C")
             self.data_labels["Wind"].config(text=f"{weather['wind_speed']} km/h")
             self.data_labels["Humidity"].config(text=f"{weather['humidity']}%")
-            self.data_labels["Description"].config(text=weather['description'])  
+            self.data_labels["Description"].config(text=weather['description'])
             self.data_labels["Pressure"].config(text=f"{weather['pressure']} hPa")
             self.loc_label.config(text=f"TimeZone : {location['timezone']}")
-            # 🌤️ Fetch weather icon from OpenWeatherMap
-            icon_code = weather["icon"]  # This should be returned from get_weather()
+
+            # Update Main Weather Icon
+            icon_code = weather["icon"]
             icon_url = f"https://openweathermap.org/img/wn/{icon_code}@2x.png"
 
             try:
                 response = requests.get(icon_url)
-                img = Image.open(BytesIO(response.content)).resize((160, 150), Image.Resampling.LANCZOS)
+                img = Image.open(BytesIO(response.content)).resize((100, 100), Image.Resampling.LANCZOS)
                 self.logo_tk = ImageTk.PhotoImage(img)
                 self.logo_label.config(image=self.logo_tk)
                 self.logo_label.image = self.logo_tk  # Prevent garbage collection
             except Exception as e:
-                print("Error loading icon:", e)
-        else:
-            for lbl in self.data_labels.values():
-                lbl.config(text="Error")
+                print("Error loading main weather icon:", e)
+
+            # 🟢 **Update Forecast for the Next 5 Days**
+            if forecast:
+                for i in range(5):                    
+                    # Update Day Label
+                    if(i==0):
+                        self.days[i].config(text="Today")
+                    else:
+                        self.days[i].config(text=f"{forecast[i]['day']}")
+
+                    # Update Temperature Label
+                    self.temperatures[i].config(text=f"{forecast[i]['temp']}°C")
+
+                    # Fetch and Update Weather Icon
+                    icon_code = forecast[i]["icon"]
+                    icon_url = f"https://openweathermap.org/img/wn/{icon_code}@2x.png"
+                    try:
+                        response = requests.get(icon_url)
+                        img = Image.open(BytesIO(response.content)).resize((55, 55), Image.Resampling.LANCZOS)
+                        img_tk = ImageTk.PhotoImage(img)
+                        self.icons[i].config(image=img_tk)
+                        self.icons[i].image = img_tk  # Prevent garbage collection
+                        self.root.after(0)
+                    except Exception as e:
+                        print("Error loading forecast icon")
+
+                    for i in range(5):
+                        self.condition[i].config(text=f"{forecast[i]['condition']}")
+
 
 
 # Run the App
