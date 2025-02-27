@@ -5,7 +5,7 @@ from datetime import datetime
 import pytz
 
 GEOCODER_KEY = "6196d0b477804722ae736e5369a090df"
-WEATHER_API_KEY = "ceb519c5f63b13eaa9abafae53bdc118"
+WEATHER_API_KEY = "a6e10cd2405910e88e1a9ea700f6995c"
 
 def get_location(city):
     """Fetches latitude, longitude, and timezone of a city."""
@@ -26,18 +26,45 @@ def get_location(city):
     return {"lat": lat, "lng": lng, "timezone": timezone, "time": local_time}
 
 def get_weather(city):
-    """Fetches weather data from WeatherStack API."""
-    api_url = f"http://api.weatherstack.com/current?access_key={WEATHER_API_KEY}&query={city}"
-    response = requests.get(api_url).json()
+    """Fetches weather data from OpenWeatherMap API."""
+    location = get_location(city)
+    if not location:
+        return None
 
-    if "current" in response:
-        print(response['current'])
+    lat, lng = location["lat"], location["lng"]
+    api_url = f"http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lng}&appid={WEATHER_API_KEY}&units=metric"
+    response = requests.get(api_url).json()
+    print(response)
+    if response.get("cod") == 200:  # Check if request was successful
         return {
-            "pressure": response['current']['pressure'],
-            "humidity": response['current']['humidity'],
-            "wind_speed": response['current']['wind_speed'],
-            "description": response['current']['weather_descriptions'][0],
-            "temperature": response['current']['temperature'],
-            "feelslike" : response['current']['feelslike'],
+            "pressure": response['main']['pressure'],
+            "humidity": response['main']['humidity'],
+            "wind_speed": response['wind']['speed'],
+            "description": response['weather'][0]['description'],
+            "temperature": response['main']['temp'],
+            "feelslike": response['main']['feels_like'],
+            "icon":response['weather'][0]['icon']
         }
+    return None
+
+def get_weekly_forecast(city):
+    """Fetches 7-day forecast from OpenWeatherMap API."""
+    location = get_location(city)
+    print(location)
+    if not location:
+        return None
+
+    lat, lng = 11.4,77.3
+    api_url = f"https://api.openweathermap.org/data/2.5/onecall?lat={lat}&lon={lng}&exclude=current,minutely,hourly,alerts&units=metric&appid={WEATHER_API_KEY}"
+
+    response = requests.get(api_url).json()
+    print(response)
+    if "daily" in response:
+        forecast = []
+        for day in response["daily"]:
+            date = datetime.fromtimestamp(day["dt"]).strftime('%A, %d %b %Y')
+            temp = day["temp"]["day"]
+            condition = day["weather"][0]["description"]
+            forecast.append(f"{date}: {temp}°C, {condition}")
+        return forecast
     return None

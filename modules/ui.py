@@ -2,10 +2,11 @@ import tkinter as tk
 from tkinter import PhotoImage, Canvas
 from PIL import Image, ImageTk
 import threading
-from modules.api import get_location, get_weather
+from modules.api import get_location, get_weather, get_weekly_forecast
 from modules.loader import Loader
 import time
-
+from io import BytesIO
+import requests
 class WeatherApp:
     def __init__(self, root):
         self.root = root
@@ -42,20 +43,27 @@ class WeatherApp:
         self.logo_label.place(x=700, y=10)
 
         # Time display
-        self.weather_label = tk.Label(root, font=("arial", 18), bg="lightblue")
+        self.weather_label = tk.Label(root, font=("arial", 15), bg="lightblue")
         self.weather_label.place(x=30, y=100)
-        self.clock_label = tk.Label(root, font=("Helvetica", 20), bg="lightblue")
+        self.clock_label = tk.Label(root, font=("Helvetica", 12), bg="lightblue")
         self.clock_label.place(x=30, y=130)
 
         # Temperature
         self.temp_label = tk.Label(root, font=("arial", 50, 'bold'), fg='#ee666d', bg='lightblue')
         self.feelsLike_label = tk.Label(root, font=('arial', 20), bg='lightblue')
+        self.loc_label = tk.Label(root, font=("arial", 10, 'bold'), fg='#1a0a6b', bg='lightblue')
 
         self.temp_label.pack(pady=(150, 10))
         self.feelsLike_label.pack()
+        self.loc_label.pack()
 
         # Info labels
         self.create_info_labels()
+
+        #Project Icon
+        self.icon = Image.open("assets/logo.png")
+        self.icon = ImageTk.PhotoImage(self.icon)
+        self.root.wm_iconphoto(True, self.icon)
 
     def rounded_rectangle(self, x1, y1, x2, y2, radius, **kwargs):
         """Draw a rounded rectangle on a canvas."""
@@ -100,12 +108,14 @@ class WeatherApp:
                 start_time = time.time()
                 location = get_location(city)
                 weather = get_weather(city) if location else None
+                weekly_forcast = get_weekly_forecast(city)
+                print(weekly_forcast)
                 print(f"Location Fetch Time: {time.time() - start_time:.2f}s")  # Log time
 
                 if not location or not weather:
                     raise ValueError("Invalid response from API")
                 self.weather_label.config(text="Last Updated At")
-                self.clock_label.config(text=time.strftime("%I:%M %p"))
+                self.clock_label.config(text=location['time'])
                 self.root.after(0, lambda: self.update_ui(location, weather))
             except Exception as e:
                 print("API Error:", e)  # Debugging
@@ -121,6 +131,7 @@ class WeatherApp:
             lbl.config(text="Not available")
         self.weather_label.config(text="Error fetching data")
 
+
     def update_ui(self, location, weather):
         if weather:
             self.temp_label.config(text=f"{weather['temperature']}⁰C")
@@ -129,43 +140,23 @@ class WeatherApp:
             self.data_labels["Humidity"].config(text=f"{weather['humidity']}%")
             self.data_labels["Description"].config(text=weather['description'])  
             self.data_labels["Pressure"].config(text=f"{weather['pressure']} hPa")
-            
-            # 🌤️ Weather icons mapping
-            weather_icons = {
-                "Sunny": "assets/sunny.png",
-                "Clear": "assets/sunny.png",
-                "Overcast": "assets/overcast.png",
-                "Cloudy": "assets/cloudy.png",
-                "Partly cloudy": "assets/cloudy.png",
-                "Light rain": "assets/rainy.png",
-                "Rain": "assets/rainy.png",
-                "Showers": "assets/rainy.png",
-                "Thunderstorm": "assets/thunderstorm.png",
-                "Snow": "assets/snowy.png",
-                "Fog": "assets/overcast.png",
-                "Smoke": "assets/overcast.png"
-            }
+            self.loc_label.config(text=f"TimeZone : {location['timezone']}")
+            # 🌤️ Fetch weather icon from OpenWeatherMap
+            icon_code = weather["icon"]  # This should be returned from get_weather()
+            icon_url = f"https://openweathermap.org/img/wn/{icon_code}@2x.png"
 
-            # ✅ Extract the first description & find best match
-            desc = weather['description'].lower()
-            icon_path = "assets/logo.png"  # Default fallback
-
-            for key in weather_icons:
-                if key.lower() in desc:
-                    icon_path = weather_icons[key]
-                    break  
-
-            # 🖼️ Load and resize the image
-            img = Image.open(icon_path).resize((120, 100), Image.Resampling.LANCZOS)
-            self.logo_tk = ImageTk.PhotoImage(img)
-
-            # 🔄 Update the label
-            self.logo_label.config(image=self.logo_tk)
-            self.logo_label.image = self.logo_tk  # Prevent garbage collection
-
+            try:
+                response = requests.get(icon_url)
+                img = Image.open(BytesIO(response.content)).resize((160, 150), Image.Resampling.LANCZOS)
+                self.logo_tk = ImageTk.PhotoImage(img)
+                self.logo_label.config(image=self.logo_tk)
+                self.logo_label.image = self.logo_tk  # Prevent garbage collection
+            except Exception as e:
+                print("Error loading icon:", e)
         else:
             for lbl in self.data_labels.values():
                 lbl.config(text="Error")
+
 
 # Run the App
 if __name__ == "__main__":
