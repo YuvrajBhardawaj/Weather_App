@@ -3,7 +3,7 @@ from opencage.geocoder import OpenCageGeocode
 from timezonefinder import TimezoneFinder
 from datetime import datetime
 import pytz
-from PIL import Image, ImageTk
+
 
 GEOCODER_KEY = "6196d0b477804722ae736e5369a090df"
 WEATHER_API_KEY = "a6e10cd2405910e88e1a9ea700f6995c"

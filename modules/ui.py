@@ -158,7 +158,27 @@ class WeatherApp:
         """Display error message when API request fails."""
         for lbl in self.data_labels.values():
             lbl.config(text="Not available")
+        self.clock_label.config(text="")
         self.weather_label.config(text="Error fetching data")
+        self.temp_label.config(text="")
+        self.feelsLike_label.config(text="Error in fetching")
+        self.data_labels["Wind"].config(text="...")
+        self.data_labels["Humidity"].config(text="...")
+        self.data_labels["Description"].config(text="...")
+        self.data_labels["Pressure"].config(text="...")
+        logo_image = Image.open("assets/logo.png").resize((150, 130))
+        self.logo_tk = ImageTk.PhotoImage(logo_image)
+        self.logo_label.config(image=self.logo_tk)
+        
+        for i in range(5):
+            # Update Day Label
+            self.days[i].config(text="")
+
+            self.temperatures[i].config(text="")
+
+            self.icons[i].config(image="")
+
+            self.condition[i].config(text="")
 
 
     def update_ui(self, location, weather, forecast):
@@ -170,7 +190,7 @@ class WeatherApp:
             self.data_labels["Description"].config(text=weather['description'])
             self.data_labels["Pressure"].config(text=f"{weather['pressure']} hPa")
             self.loc_label.config(text=f"TimeZone : {location['timezone']}")
-
+            self.logo_label.config(image="")
             # Update Main Weather Icon
             icon_code = weather["icon"]
 
@@ -187,6 +207,15 @@ class WeatherApp:
 
             # 🟢 **Update Forecast for the Next 5 Days**
         if forecast:
+            for i in range(5):
+                # Update Day Label
+                self.days[i].config(text="")
+
+                self.temperatures[i].config(text="")
+
+                self.icons[i].config(image="")
+                
+                self.condition[i].config(text="")
             def load_forecast_icon(i,icon_code):
                 try:
                     response = get_icon(icon_code)
