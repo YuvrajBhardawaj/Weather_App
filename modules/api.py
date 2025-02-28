@@ -3,6 +3,7 @@ from opencage.geocoder import OpenCageGeocode
 from timezonefinder import TimezoneFinder
 from datetime import datetime
 import pytz
+from PIL import Image, ImageTk
 
 GEOCODER_KEY = "6196d0b477804722ae736e5369a090df"
 WEATHER_API_KEY = "a6e10cd2405910e88e1a9ea700f6995c"
@@ -34,7 +35,7 @@ def get_weather(city):
     lat, lng = location["lat"], location["lng"]
     api_url = f"http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lng}&appid={WEATHER_API_KEY}&units=metric"
     response = requests.get(api_url).json()
-    print(response)
+    #print(response)
     if response.get("cod") == 200:  # Check if request was successful
         return {
             "pressure": response['main']['pressure'],
@@ -48,23 +49,41 @@ def get_weather(city):
     return None
 
 def get_weekly_forecast(city):
-    """Fetches 7-day forecast from OpenWeatherMap API."""
-    location = get_location(city)
-    print(location)
-    if not location:
-        return None
-
-    lat, lng = 11.4,77.3
-    api_url = f"https://api.openweathermap.org/data/2.5/onecall?lat={lat}&lon={lng}&exclude=current,minutely,hourly,alerts&units=metric&appid={WEATHER_API_KEY}"
+    """Fetches 5-day forecast from OpenWeatherMap API and extracts daily summaries."""
+    API_KEY = "YOUR_API_KEY"
+    api_url = f"https://api.openweathermap.org/data/2.5/forecast?q={city}&appid={WEATHER_API_KEY}&units=metric"
 
     response = requests.get(api_url).json()
-    print(response)
-    if "daily" in response:
-        forecast = []
-        for day in response["daily"]:
-            date = datetime.fromtimestamp(day["dt"]).strftime('%A, %d %b %Y')
-            temp = day["temp"]["day"]
-            condition = day["weather"][0]["description"]
-            forecast.append(f"{date}: {temp}°C, {condition}")
-        return forecast
+    #print(response['list'])
+    if response.get("cod") != "200":
+        print("Error:", response.get("message"))
+        return {}
+
+    daily_forecast = {}
+    
+    for entry in response["list"]:
+        date_obj = datetime.fromtimestamp(entry["dt"])
+        date = date_obj.strftime('%Y-%m-%d')
+        day = date_obj.strftime('%A')  # Get the day of the week
+        temp = entry["main"]["temp"]
+        condition = entry["weather"][0]["description"]
+        icon = entry['weather'][0]['icon']
+
+        if date not in daily_forecast:
+            daily_forecast[date] = {"temp": temp, "condition": condition, "day": day, "icon" : icon}
+
+    # Formatting forecast with day name
+    forecast = [
+        {"temp": data["temp"], "condition": data["condition"], "day": data["day"], "icon": data["icon"]}
+        for date, data in daily_forecast.items()
+    ]
+
+    return forecast
+def get_icon(icon_code):
+    icon_url = f"https://openweathermap.org/img/wn/{icon_code}@2x.png"
+    try:
+        response = requests.get(icon_url)
+        return response
+    except Exception as e:
+        print("Error in loading icon : ",e)
     return None
