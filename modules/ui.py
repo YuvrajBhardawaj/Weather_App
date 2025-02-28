@@ -169,7 +169,7 @@ class WeatherApp:
         logo_image = Image.open("assets/logo.png").resize((150, 130))
         self.logo_tk = ImageTk.PhotoImage(logo_image)
         self.logo_label.config(image=self.logo_tk)
-        
+
         for i in range(5):
             # Update Day Label
             self.days[i].config(text="")
@@ -208,14 +208,8 @@ class WeatherApp:
             # 🟢 **Update Forecast for the Next 5 Days**
         if forecast:
             for i in range(5):
-                # Update Day Label
-                self.days[i].config(text="")
-
-                self.temperatures[i].config(text="")
-
                 self.icons[i].config(image="")
                 
-                self.condition[i].config(text="")
             def load_forecast_icon(i,icon_code):
                 try:
                     response = get_icon(icon_code)
