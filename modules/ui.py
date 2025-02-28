@@ -159,6 +159,7 @@ class WeatherApp:
         for lbl in self.data_labels.values():
             lbl.config(text="Not available")
         self.clock_label.config(text="")
+        self.loc_label.config(text="")
         self.weather_label.config(text="Error fetching data")
         self.temp_label.config(text="")
         self.feelsLike_label.config(text="Error in fetching")
